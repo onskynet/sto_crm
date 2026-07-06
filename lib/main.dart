@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const STOCrmApp());
 }
 
@@ -21,8 +25,8 @@ class STOCrmApp extends StatelessWidget {
   }
 }
 
-// Модель заказа
 class Order {
+  String id;
   String clientName;
   String phone;
   String car;
@@ -31,6 +35,7 @@ class Order {
   double price;
 
   Order({
+    this.id = '',
     required this.clientName,
     required this.phone,
     required this.car,
@@ -38,22 +43,22 @@ class Order {
     this.status = 'Новый',
     this.price = 0,
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'clientName': clientName,
+      'phone': phone,
+      'car': car,
+      'problem': problem,
+      'status': status,
+      'price': price,
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+  }
 }
 
-// Главный экран
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  // Список заказов. Пока в памяти
-  List<Order> orders = [
-    Order(clientName: 'Иван Петров', phone: '+7 701 123 4567', car: 'Toyota Camry', problem: 'Замена масла', price: 8000),
-    Order(clientName: 'Алия С.', phone: '+7 777 555 4433', car: 'BMW X5', problem: 'Диагностика ходовой', price: 15000),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -63,47 +68,46 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.blue[700],
         foregroundColor: Colors.white,
       ),
-      body: orders.isEmpty
-         ? const Center(child: Text('Заказов пока нет'))
-          : ListView.builder(
-              itemCount: orders.length,
-              itemBuilder: (context, index) {
-                final order = orders[index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: ListTile(
-                    title: Text(order.clientName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text('${order.car} • ${order.problem}'),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text('${order.price.toInt()} ₸', style: const TextStyle(fontSize: 16)),
-                        Text(order.status, style: TextStyle(color: Colors.blue[700], fontSize: 12)),
-                      ],
-                    ),
-                    onTap: () {
-                      // Тут будет экран деталей
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Открываем заказ: ${order.clientName}')),
-                      );
-                    },
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance.collection('orders').orderBy('createdAt', descending: true).snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text('Заказов пока нет'));
+          }
+
+          final orders = snapshot.data!.docs;
+          return ListView.builder(
+            itemCount: orders.length,
+            itemBuilder: (context, index) {
+              final data = orders[index].data() as Map<String, dynamic>;
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: ListTile(
+                  title: Text(data['clientName'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text('${data['car']} • ${data['problem']}'),
+                  trailing: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text('${(data['price']?? 0).toInt()} ₸', style: const TextStyle(fontSize: 16)),
+                      Text(data['status'], style: TextStyle(color: Colors.blue[700], fontSize: 12)),
+                    ],
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
+          );
+        },
+      ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          // Переход на экран добавления
-          final newOrder = await Navigator.push<Order>(
+        onPressed: () {
+          Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const AddOrderScreen()),
           );
-          if (newOrder!= null) {
-            setState(() {
-              orders.add(newOrder);
-            });
-          }
         },
         child: const Icon(Icons.add),
       ),
@@ -111,7 +115,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// Экран добавления заказа
 class AddOrderScreen extends StatefulWidget {
   const AddOrderScreen({super.key});
 
@@ -126,6 +129,25 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   final _carController = TextEditingController();
   final _problemController = TextEditingController();
   final _priceController = TextEditingController();
+  bool _isLoading = false;
+
+  Future<void> _saveOrder() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    final order = Order(
+      clientName: _nameController.text,
+      phone: _phoneController.text,
+      car: _carController.text,
+      problem: _problemController.text,
+      price: double.tryParse(_priceController.text)?? 0,
+    );
+
+    await FirebaseFirestore.instance.collection('orders').add(order.toMap());
+
+    if (mounted) Navigator.pop(context);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -137,48 +159,15 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           key: _formKey,
           child: ListView(
             children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: 'ФИО клиента'),
-                validator: (v) => v!.isEmpty? 'Заполни поле' : null,
-              ),
-              TextFormField(
-                controller: _phoneController,
-                decoration: const InputDecoration(labelText: 'Телефон'),
-                keyboardType: TextInputType.phone,
-                validator: (v) => v!.isEmpty? 'Заполни поле' : null,
-              ),
-              TextFormField(
-                controller: _carController,
-                decoration: const InputDecoration(labelText: 'Марка и модель авто'),
-                validator: (v) => v!.isEmpty? 'Заполни поле' : null,
-              ),
-              TextFormField(
-                controller: _problemController,
-                decoration: const InputDecoration(labelText: 'Проблема'),
-                maxLines: 3,
-                validator: (v) => v!.isEmpty? 'Заполни поле' : null,
-              ),
-              TextFormField(
-                controller: _priceController,
-                decoration: const InputDecoration(labelText: 'Сумма, ₸'),
-                keyboardType: TextInputType.number,
-              ),
+              TextFormField(controller: _nameController, decoration: const InputDecoration(labelText: 'ФИО клиента'), validator: (v) => v!.isEmpty? 'Заполни поле' : null),
+              TextFormField(controller: _phoneController, decoration: const InputDecoration(labelText: 'Телефон'), keyboardType: TextInputType.phone, validator: (v) => v!.isEmpty? 'Заполни поле' : null),
+              TextFormField(controller: _carController, decoration: const InputDecoration(labelText: 'Марка и модель авто'), validator: (v) => v!.isEmpty? 'Заполни поле' : null),
+              TextFormField(controller: _problemController, decoration: const InputDecoration(labelText: 'Проблема'), maxLines: 3, validator: (v) => v!.isEmpty? 'Заполни поле' : null),
+              TextFormField(controller: _priceController, decoration: const InputDecoration(labelText: 'Сумма, ₸'), keyboardType: TextInputType.number),
               const SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState!.validate()) {
-                    final order = Order(
-                      clientName: _nameController.text,
-                      phone: _phoneController.text,
-                      car: _carController.text,
-                      problem: _problemController.text,
-                      price: double.tryParse(_priceController.text)?? 0,
-                    );
-                    Navigator.pop(context, order);
-                  }
-                },
-                child: const Text('Сохранить заказ'),
+                onPressed: _isLoading? null : _saveOrder,
+                child: _isLoading? const CircularProgressIndicator() : const Text('Сохранить заказ'),
               ),
             ],
           ),
