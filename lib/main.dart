@@ -4,7 +4,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: const FirebaseOptions(
+      apiKey: 'AIzaSyBqxvfm1-DADjbmH8FoCkO2XqUuxwI2FKk',
+      appId: '1:628737621368:android:e3be6ca9a981b75e4a9c8d',
+      messagingSenderId: '628737621368',
+      projectId: 'checkservicemerke',
+      storageBucket: 'checkservicemerke.firebasestorage.app',
+    ),
+  );
   runApp(const STOCrmApp());
 }
 
@@ -74,6 +82,9 @@ class HomeScreen extends StatelessWidget {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
+          if (snapshot.hasError) {
+            return Center(child: Text('Ошибка: ${snapshot.error}'));
+          }
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return const Center(child: Text('Заказов пока нет'));
           }
@@ -86,14 +97,14 @@ class HomeScreen extends StatelessWidget {
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 child: ListTile(
-                  title: Text(data['clientName'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('${data['car']} • ${data['problem']}'),
+                  title: Text(data['clientName']?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text('${data['car']?? ''} • ${data['problem']?? ''}'),
                   trailing: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text('${(data['price']?? 0).toInt()} ₸', style: const TextStyle(fontSize: 16)),
-                      Text(data['status'], style: TextStyle(color: Colors.blue[700], fontSize: 12)),
+                      Text(data['status']?? 'Новый', style: TextStyle(color: Colors.blue[700], fontSize: 12)),
                     ],
                   ),
                 ),
@@ -136,17 +147,25 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
 
     setState(() => _isLoading = true);
 
-    final order = Order(
-      clientName: _nameController.text,
-      phone: _phoneController.text,
-      car: _carController.text,
-      problem: _problemController.text,
-      price: double.tryParse(_priceController.text)?? 0,
-    );
+    try {
+      final order = Order(
+        clientName: _nameController.text,
+        phone: _phoneController.text,
+        car: _carController.text,
+        problem: _problemController.text,
+        price: double.tryParse(_priceController.text)?? 0,
+      );
 
-    await FirebaseFirestore.instance.collection('orders').add(order.toMap());
+      await FirebaseFirestore.instance.collection('orders').add(order.toMap());
 
-    if (mounted) Navigator.pop(context);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -167,7 +186,8 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _isLoading? null : _saveOrder,
-                child: _isLoading? const CircularProgressIndicator() : const Text('Сохранить заказ'),
+                style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(16)),
+                child: _isLoading? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Сохранить заказ'),
               ),
             ],
           ),
