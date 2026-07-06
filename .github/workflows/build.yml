@@ -11,9 +11,6 @@ jobs:
         with:
           flutter-version: '3.24.0'
       - run: flutter pub get
-      - name: Clear Gradle cache
-        run: |
-          flutter clean
-          rm -rf ~/.gradle/caches/
+      - run: flutter clean
+      - run: rm -rf ~/.gradle/caches/
       - run: flutter build apk --release
-      
