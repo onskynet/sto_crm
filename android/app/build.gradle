@@ -6,6 +6,7 @@ plugins {
 android {
     namespace "com.sto.crm"
     compileSdkVersion 34
+
     defaultConfig {
         applicationId "com.sto.crm"
         minSdkVersion 21
@@ -13,10 +14,12 @@ android {
         versionCode 1
         versionName "1.0"
     }
+    
     buildTypes {
         release {
             signingConfig signingConfigs.debug
         }
     }
 }
+
 dependencies {}
