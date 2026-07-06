@@ -1,0 +1,27 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+android {
+    namespace "com.sto.crm"
+    compileSdkVersion 34
+    ndkVersion flutter.ndkVersion
+
+    defaultConfig {
+        applicationId "com.sto.crm"
+        minSdkVersion 21
+        targetSdkVersion 34
+        versionCode 1
+        versionName "1.0"
+    }
+}
+
+flutter {
+    source '../..'
+}
+
+dependencies {}
+
+apply plugin: 'com.google.gms.google-services'
