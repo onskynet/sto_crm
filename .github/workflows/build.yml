@@ -1,6 +1,8 @@
 name: Build APK
 on:
   workflow_dispatch:
+  push:
+    branches: [ main ]
 
 jobs:
   build:
@@ -13,4 +15,5 @@ jobs:
       - run: flutter pub get
       - run: flutter clean
       - run: rm -rf ~/.gradle/caches/
+      - run: rm -rf android && flutter create . --platforms=android
       - run: flutter build apk --release
