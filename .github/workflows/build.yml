@@ -1,21 +1,8 @@
 name: Build APK
 on:
   workflow_dispatch:
-  
+
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.24.0'
-      - run: flutter pub get
-      - name: Clear Gradle cache
-        run: |
-          flutter clean
-          rm -rf ~/.gradle/caches/
-      - run: flutter build apk --releasejobs:
   build:
     runs-on: ubuntu-latest
     steps:
