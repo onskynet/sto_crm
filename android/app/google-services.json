@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "628737621368",
+    "project_id": "checkservicemerke",
+    "storage_bucket": "checkservicemerke.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:628737621368:android:e3be6ca9a981b75e4a9c8d",
+        "android_client_info": {
+          "package_name": "com.sto.crm"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "628737621368-shc2gbikoetg2mv0jcibi5ulhk9a0ghj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBqxvfm1-DADjbmH8FoCkO2XqUuxwI2FKk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "628737621368-shc2gbikoetg2mv0jcibi5ulhk9a0ghj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
